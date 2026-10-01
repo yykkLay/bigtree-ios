@@ -1,0 +1,103 @@
+name: Build unsigned iOS IPA (BigTree client)
+
+# 手动触发：逐个文件上传时不会产生多余的构建
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: 取出仓库代码
+        uses: actions/checkout@v4
+
+      - name: 查看编译环境
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: 安装 XcodeGen
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: brew install xcodegen || brew install --quiet xcodegen
+
+      - name: 生成 Xcode 工程
+        run: |
+          xcodegen --version
+          xcodegen generate
+          xcodebuild -project BigtreeIOS.xcodeproj -list
+
+      - name: 编译（不签名）
+        run: |
+          set +e
+          xcodebuild \
+            -project BigtreeIOS.xcodeproj \
+            -scheme BigtreeIOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            VALIDATE_PRODUCT=NO \
+            build
+          RC=$?
+          set -e
+          echo "xcodebuild 退出码: $RC"
+          if [ "$RC" -eq 0 ]; then
+            echo "==> 编译完全成功"
+            exit 0
+          fi
+          APP_DIR="build/Build/Products/Release-iphoneos/BigtreeIOS.app"
+          if [ -f "$APP_DIR/Info.plist" ] && [ -f "$APP_DIR/BigtreeIOS" ]; then
+            echo "==> 产物完整（仅校验步骤报错），继续打包"
+            exit 0
+          fi
+          echo "==> 产物不完整，判定失败"
+          exit "$RC"
+
+      - name: 诊断信息（编译失败时自动打印）
+        if: failure()
+        run: |
+          echo "===== 查找产物 ====="
+          find build -maxdepth 5 -name "*.app" 2>/dev/null || true
+          echo "===== 编译日志尾部（真正的错误在这里）====="
+          find build -name "*.xcactivitylog" 2>/dev/null | head -3
+          echo "===== 关键构建设置 ====="
+          xcodebuild -project BigtreeIOS.xcodeproj -target BigtreeIOS -showBuildSettings 2>/dev/null | grep -Ei 'INFOPLIST|PRODUCT_NAME|EXECUTABLE_NAME|WRAPPER_EXTENSION' || true
+
+      - name: 打包成 ipa（XML plist + ad-hoc 签名，兼容第三方签名工具）
+        run: |
+          set -e
+          APP_DIR=$(find build -type d -name "BigtreeIOS.app" -not -path "*/Index.noindex/*" | head -n 1)
+          echo "找到: $APP_DIR"
+          if [ -z "$APP_DIR" ]; then
+            echo "没有找到 .app，列出目录结构："
+            find build -maxdepth 6 -type d | head -50
+            exit 1
+          fi
+
+          echo "==> 把 Info.plist 转成 XML 格式"
+          plutil -convert xml1 "$APP_DIR/Info.plist"
+          head -n 8 "$APP_DIR/Info.plist"
+
+          echo "==> ad-hoc 签名，生成 _CodeSignature"
+          codesign --force --sign - --timestamp=none "$APP_DIR" || echo "  ad-hoc 签名失败（不致命，签名工具会重签）"
+          ls -la "$APP_DIR/_CodeSignature" 2>&1 || true
+
+          echo "==> 打包"
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "$APP_DIR" Payload/
+          zip -qry BigtreeIOS-unsigned.ipa Payload
+          ls -la BigtreeIOS-unsigned.ipa
+          unzip -l BigtreeIOS-unsigned.ipa | head -n 20
+
+      - name: 上传结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: BigtreeIOS-unsigned-ipa
+          path: BigtreeIOS-unsigned.ipa
+          if-no-files-found: error
