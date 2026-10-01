@@ -127,29 +127,32 @@ extension FairPlayKeyLoader: AVContentKeySessionDelegate {
                 return
             }
 
-            do {
-                // 1) 生成 SPC
-                let spc = try keyRequest.makeStreamingContentKeyRequestData(
-                    forApp: cert,
-                    contentIdentifier: id.data(using: .utf8),
-                    options: [AVContentKeyRequestProtocolVersionsKey: [1]]
-                )
+            // 生成 SPC 在 Xcode 26 起是 async API，需要用 Task 包起来
+            Task {
+                do {
+                    // 1) 生成 SPC
+                    let spc = try await keyRequest.makeStreamingContentKeyRequestData(
+                        forApp: cert,
+                        contentIdentifier: id.data(using: .utf8),
+                        options: [AVContentKeyRequestProtocolVersionsKey: [1]]
+                    )
 
-                // 2) 用 SPC 换 CKC
-                self.requestLicense(spc: spc, assetID: id) { ckc in
-                    DispatchQueue.main.async {
-                        guard let ckc = ckc, !ckc.isEmpty else {
-                            self.fail(keyRequest, "许可证服务器未返回密钥（CKC 为空）")
-                            return
+                    // 2) 用 SPC 换 CKC
+                    self.requestLicense(spc: spc, assetID: id) { ckc in
+                        DispatchQueue.main.async {
+                            guard let ckc = ckc, !ckc.isEmpty else {
+                                self.fail(keyRequest, "许可证服务器未返回密钥（CKC 为空）")
+                                return
+                            }
+                            keyRequest.processContentKeyResponse(
+                                AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckc)
+                            )
                         }
-                        keyRequest.processContentKeyResponse(
-                            AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckc)
-                        )
                     }
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.fail(keyRequest, "生成 SPC 失败：\(error.localizedDescription)")
+                } catch {
+                    DispatchQueue.main.async {
+                        self.fail(keyRequest, "生成 SPC 失败：\(error.localizedDescription)")
+                    }
                 }
             }
         }
