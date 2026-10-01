@@ -160,6 +160,10 @@ struct WebView: UIViewRepresentable {
             js += "try { document.addEventListener('dblclick', function (ev) { try { var b = document.querySelector('.close-full'); if (b && b.offsetParent !== null) { b.click(); } } catch (e2) {} }, true); } catch (e) {}\n"
         }
 
+        // 6) 隐藏网页上所有「安卓 / APK / 下载 App」入口（iOS 上用不到）
+        //    包括：升级弹窗里的安卓按钮、data-app-download、以及「BigTree 安卓版」入口
+        js += "try { var __hideAndroid = function () { try { var els = document.querySelectorAll('[data-app-download], a[href*=\".apk\"], img[alt*=\"android\" i]'); for (var i = 0; i < els.length; i++) { els[i].style.display = 'none'; } var cands = document.querySelectorAll('a, button, .dropdown-item, .list-group-item'); for (var j = 0; j < cands.length; j++) { var t = (cands[j].textContent || '').trim(); if (t && t.length <= 14 && /(安卓|APK|Android)/i.test(t)) { cands[j].style.display = 'none'; } } } catch (e) {} }; __hideAndroid(); document.addEventListener('DOMContentLoaded', __hideAndroid); setInterval(__hideAndroid, 1500); } catch (e) {}\n"
+
         js += "})();\n"
         return js
     }
