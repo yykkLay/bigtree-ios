@@ -26,17 +26,24 @@ enum UAMode: String, CaseIterable, Identifiable {
     var userAgent: String? {
         switch self {
         case .plugin:
-            // ★ 关键一：ibutv 判断"插件装没装"用的是
-            //    /xstree|ibutv|bigtree/i.test(navigator.userAgent)
-            //    带这几个词之一，网站就认为插件已安装，
-            //    那些"需要插件的源"（B站/优酷/芒果/种子）才会解锁。
-            // ★ 关键二：网站读版本号**只认 UA 里的 `bigtree/<版本号>`**：
-            //    f = (ua.match(/bigtree\/([\d.]+)/i) || [])[1]
-            //    读不到就把你当成"版本过旧的插件"，弹「APP版本过旧」。
-            //    这里写成当前最新版 1.13，避免弹升级提示。
-            // ★ 关键三：保留 xstree 前缀，让它认成"浏览器插件"而不是安卓 App，
-            //    否则升级弹窗会出现安卓 APK 下载按钮。
-            return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 xstree/1.13.9 bigtree/1.13.9"
+            // ★★★ 这里的 UA 写法是反复试出来的，改动前请先看网站源码的逻辑：
+            //
+            //  文件 app.JIkSIbp0.js：
+            //    u = /xstree|ibutv|bigtree/i.test(ua)   // 是否装了插件/App（Capability 检测也用它）
+            //    d = /xstree|ibutv/i.test(ua)           // 是否"已停止支持的浏览器插件"
+            //    f = (ua.match(/bigtree\/([\d.]+)/i)||[])[1] || ``   // 版本号只从这里读
+            //
+            //    if (u && i) {
+            //        if (d) p(``, true);                // ← d 为真就【无条件】弹「APP版本过旧」
+            //        else if (window.Android?.getVersion) { ...比较版本... }
+            //        else (!f || W(i, f) > 0) && h(f);  // ← 只有版本落后才弹
+            //    }
+            //
+            // 结论：
+            //   1) 必须带 bigtree（让 u=true，插件检测通过，那些源才解锁）
+            //   2) 绝对不能带 xstree / ibutv（否则 d=true → 直接弹"已停止支持"）
+            //   3) 版本号写在 bigtree/ 后面，且要 >= 服务器的最新版本（当前 1.13）
+            return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 bigtree/1.14"
         case .desktop:
             // 与 bigtree.apk 中硬编码的 UA 完全一致（不带插件标识）
             return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -168,8 +175,8 @@ struct WebView: UIViewRepresentable {
         //    网站 Z() 的读取顺序：
         //      system.pluginInstalled → <html data-xstree> → window.__XSTREE_VERSION__
         //    第 1 项需要插件与服务器通信（我没有），后两项可以直接注入。
-        js += "try { window.__XSTREE_VERSION__ = '1.13.9'; } catch (e) {}\n"
-        js += "try { var __sv = function () { try { document.documentElement.setAttribute('data-xstree', '1.13.9'); } catch (e) {} }; __sv(); document.addEventListener('DOMContentLoaded', __sv); setInterval(__sv, 1000); } catch (e) {}\n"
+        js += "try { window.__XSTREE_VERSION__ = '1.14'; } catch (e) {}\n"
+        js += "try { var __sv = function () { try { document.documentElement.setAttribute('data-xstree', '1.14'); } catch (e) {} }; __sv(); document.addEventListener('DOMContentLoaded', __sv); setInterval(__sv, 1000); } catch (e) {}\n"
 
         js += "})();\n"
         return js
