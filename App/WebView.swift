@@ -51,6 +51,7 @@ struct WebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        config.allowsPictureInPictureMediaPlayback = true
         config.defaultWebpagePreferences.allowsContentJavaScript = true
         if #available(iOS 15.4, *) {
             config.preferences.isElementFullscreenEnabled = true
