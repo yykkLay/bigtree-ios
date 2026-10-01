@@ -27,7 +27,7 @@ struct ContentView: View {
         TabItem(id: 4, title: "搜索", icon: "magnifyingglass",      url: "https://ibutv.com/#/search")
     ]
 
-    @State private var uaMode: UAMode = .desktop
+    @State private var uaMode: UAMode = .plugin
     @State private var fakeApp = false
 
     @State private var startURL = URL(string: "https://ibutv.com/")!
