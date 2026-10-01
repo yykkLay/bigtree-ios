@@ -47,6 +47,9 @@ struct ContentView: View {
     @State private var capturedStreams: [String] = []
     @State private var manualStream = ""
 
+    // 界面偏好
+    @AppStorage("hide_close_btn") private var hideCloseBtn = true
+
     // FairPlay 服务器配置
     @AppStorage("fp_cert")    private var fpCert = ""
     @AppStorage("fp_license") private var fpLicense = ""
@@ -78,6 +81,7 @@ struct ContentView: View {
                         canGoForward: $canGoForward,
                         isLoading: $isLoading,
                         pageTitle: $pageTitle,
+                        hideCloseButton: hideCloseBtn,
                         onStream: { url in
                             if !capturedStreams.contains(url) {
                                 capturedStreams.append(url)
@@ -196,6 +200,15 @@ struct ContentView: View {
                 }
 
                 Divider()
+
+                Button {
+                    hideCloseBtn.toggle()
+                    reloadKeepingURL()
+                } label: {
+                    Label(hideCloseBtn ? "隐藏全屏退出按钮：开（双击画面退出）"
+                                       : "隐藏全屏退出按钮：关",
+                          systemImage: "xmark.circle")
+                }
 
                 Button { goHome() } label: {
                     Label("回到首页", systemImage: "house")
