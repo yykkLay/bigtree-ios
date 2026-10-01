@@ -26,11 +26,17 @@ enum UAMode: String, CaseIterable, Identifiable {
     var userAgent: String? {
         switch self {
         case .plugin:
-            // ★★ 关键：ibutv 的 Capability 检测是
+            // ★ 关键一：ibutv 判断"插件装没装"用的是
             //    /xstree|ibutv|bigtree/i.test(navigator.userAgent)
-            //    只要 UA 里带这几个词之一，网站就认为"插件已安装"，
-            //    于是那些"需要插件的源"（B站/优酷/芒果/种子）才会解锁。
-            return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 xstree/0.1.8"
+            //    带这几个词之一，网站就认为插件已安装，
+            //    那些"需要插件的源"（B站/优酷/芒果/种子）才会解锁。
+            // ★ 关键二：网站读版本号**只认 UA 里的 `bigtree/<版本号>`**：
+            //    f = (ua.match(/bigtree\/([\d.]+)/i) || [])[1]
+            //    读不到就把你当成"版本过旧的插件"，弹「APP版本过旧」。
+            //    这里写成当前最新版 1.13，避免弹升级提示。
+            // ★ 关键三：保留 xstree 前缀，让它认成"浏览器插件"而不是安卓 App，
+            //    否则升级弹窗会出现安卓 APK 下载按钮。
+            return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 xstree/1.13 bigtree/1.13"
         case .desktop:
             // 与 bigtree.apk 中硬编码的 UA 完全一致（不带插件标识）
             return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
