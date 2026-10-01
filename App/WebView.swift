@@ -84,58 +84,22 @@ struct WebView: UIViewRepresentable {
     /// 2) 给官方 App 才有的原生桥提供存根，避免网页调用报错
     /// 3) 可选：伪造 window.Android，让 ibutv 把本 App 当成官方安卓客户端
     static func injectedJS(fakeApp: Bool) -> String {
-        var js = """
-        (function () {
-          try { window.__rulesReady = true; } catch (e) {}
+        var js = "(function () {\n"
+        js += "try { window.__rulesReady = true; } catch (e) {}\n"
 
-          try {
-            setInterval(function () {
-              try { window.postMessage({ type: 'RULES_READY' }, location.origin); } catch (e) {}
-            }, 1000);
-          } catch (e) {}
+        js += "try { setInterval(function () { try { window.postMessage({ type: 'RULES_READY' }, location.origin); } catch (e) {} }, 1000); } catch (e) {}\n"
 
-          try {
-            if (typeof window.__bigtreeRemoteCommand !== 'function') {
-              window.__bigtreeRemoteCommand = function () { return 0; };
-            }
-            if (typeof window.__exitPlayerFullscreen !== 'function') {
-              window.__exitPlayerFullscreen = function () {
-                try {
-                  var el = document.fullscreenElement || document.webkitFullscreenElement;
-                  if (el) {
-                    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-                    return 1;
-                  }
-                } catch (e) {}
-                return 0;
-              };
-            }
-            window.__urlWatcher = true;
-          } catch (e) {}
-
-        """
+        js += "try {\n"
+        js += "if (typeof window.__bigtreeRemoteCommand !== 'function') { window.__bigtreeRemoteCommand = function () { return 0; }; }\n"
+        js += "if (typeof window.__exitPlayerFullscreen !== 'function') { window.__exitPlayerFullscreen = function () { try { var el = document.fullscreenElement || document.webkitFullscreenElement; if (el) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return 1; } } catch (e) {} return 0; }; }\n"
+        js += "window.__urlWatcher = true;\n"
+        js += "} catch (e) {}\n"
 
         if fakeApp {
-            js += """
-          try {
-            if (!window.Android) {
-              window.Android = {
-                getVersion: function () { return '1.0.8'; },
-                wasDebugEnabled: function () { return false; },
-                saveUrl: function () {},
-                openAppDownload: function () {},
-                setFullscreen: function () {},
-                openAppDownloadPage: function () {}
-              };
-            }
-          } catch (e) {}
-
-            """
+            js += "try { if (!window.Android) { window.Android = { getVersion: function () { return '1.0.8'; }, wasDebugEnabled: function () { return false; }, saveUrl: function () {}, openAppDownload: function () {}, setFullscreen: function () {} }; } } catch (e) {}\n"
         }
 
-        js += """
-        })();
-        """
+        js += "})();\n"
         return js
     }
 
