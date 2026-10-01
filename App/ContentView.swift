@@ -7,6 +7,7 @@ enum ActiveSheet: String, Identifiable {
     case address
     case streams
     case fairplay
+    case diag
     var id: String { rawValue }
 }
 
@@ -46,6 +47,9 @@ struct ContentView: View {
     // 捕获到的视频流地址（m3u8 / skd）
     @State private var capturedStreams: [String] = []
     @State private var manualStream = ""
+
+    // 诊断信息
+    @State private var diagText = ""
 
     // 界面偏好
     @AppStorage("hide_close_btn") private var hideCloseBtn = true
@@ -118,6 +122,8 @@ struct ContentView: View {
                 streamsSheet
             case .fairplay:
                 fairplaySheet
+            case .diag:
+                diagView
             }
         }
         .fullScreenCover(isPresented: $showPlayer) {
@@ -171,6 +177,12 @@ struct ContentView: View {
                     Label(fpConfig.isConfigured ? "FairPlay 服务器：已配置"
                                                 : "FairPlay 服务器：未配置",
                           systemImage: "lock.shield")
+                }
+
+                Divider()
+
+                Button { runDiagnostics() } label: {
+                    Label("诊断信息（出问题时看这个）", systemImage: "stethoscope")
                 }
 
                 Divider()
@@ -379,6 +391,50 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") { activeSheet = nil }
+                }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // 诊断信息
+    // ---------------------------------------------------------------
+    private var diagView: some View {
+        NavigationView {
+            ScrollView {
+                Text(diagText.isEmpty ? "读取中…" : diagText)
+                    .font(.system(size: 12, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle("诊断信息")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { activeSheet = nil }
+                }
+            }
+        }
+    }
+
+    private func runDiagnostics() {
+        guard let wv = webView else {
+            diagText = "网页还没加载完成"
+            activeSheet = .diag
+            return
+        }
+        diagText = "读取中…"
+        activeSheet = .diag
+        let js = "(window.__diag ? window.__diag() : '诊断脚本未注入（请下拉刷新页面后重试）')"
+        wv.evaluateJavaScript(js) { result, error in
+            DispatchQueue.main.async {
+                if let s = result as? String {
+                    diagText = s
+                } else if let e = error {
+                    diagText = "读取失败：" + e.localizedDescription
+                } else {
+                    diagText = "读取失败（未知原因）"
                 }
             }
         }
