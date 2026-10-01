@@ -6,6 +6,7 @@ import UIKit
 /// 官方安卓 App 用的就是「桌面 Chrome」的 UA（从 bigtree.apk 里挖出来的），
 /// 借它让 ibutv 认为访问者是桌面浏览器，而不是"被禁用的手机"。
 enum UAMode: String, CaseIterable, Identifiable {
+    case plugin
     case desktop
     case android
     case iosDefault
@@ -14,6 +15,7 @@ enum UAMode: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
+        case .plugin:     return "插件版"
         case .desktop:    return "桌面"
         case .android:    return "安卓"
         case .iosDefault: return "iOS"
@@ -23,8 +25,14 @@ enum UAMode: String, CaseIterable, Identifiable {
     /// 返回 nil 表示用系统默认 UA
     var userAgent: String? {
         switch self {
+        case .plugin:
+            // ★★ 关键：ibutv 的 Capability 检测是
+            //    /xstree|ibutv|bigtree/i.test(navigator.userAgent)
+            //    只要 UA 里带这几个词之一，网站就认为"插件已安装"，
+            //    于是那些"需要插件的源"（B站/优酷/芒果/种子）才会解锁。
+            return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 xstree/0.1.8"
         case .desktop:
-            // ★ 与 bigtree.apk 中硬编码的 UA 完全一致
+            // 与 bigtree.apk 中硬编码的 UA 完全一致（不带插件标识）
             return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         case .android:
             return "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
