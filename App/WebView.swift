@@ -178,6 +178,9 @@ struct WebView: UIViewRepresentable {
         js += "try { window.__XSTREE_VERSION__ = '1.14'; } catch (e) {}\n"
         js += "try { var __sv = function () { try { document.documentElement.setAttribute('data-xstree', '1.14'); } catch (e) {} }; __sv(); document.addEventListener('DOMContentLoaded', __sv); setInterval(__sv, 1000); } catch (e) {}\n"
 
+        // 8) 诊断信息（App 里 ⋯ →「诊断信息」会调用它）
+        js += "window.__diag = function () { var o = {}; try { o['UA'] = navigator.userAgent; } catch (e) {} try { o['登录令牌'] = localStorage.getItem('token') ? '有 ✓' : '无 ✗ → 需要在 App 里登录一次'; } catch (e) { o['登录令牌'] = '读取失败'; } try { o['被识别为插件'] = /xstree|ibutv|bigtree/i.test(navigator.userAgent) ? '是 ✓' : '否 ✗ → 会提示安装插件'; } catch (e) {} try { o['踩中老插件判定'] = /xstree|ibutv/i.test(navigator.userAgent) ? '是 ✗ → 会弹 APP版本过旧' : '否 ✓'; } catch (e) {} try { o['__XSTREE_VERSION__'] = String(window.__XSTREE_VERSION__ || '(无)'); } catch (e) {} try { o['html data-xstree'] = String(document.documentElement.getAttribute('data-xstree') || '(无)'); } catch (e) {} try { o['已捕获视频流'] = String((window.__capturedStreams || []).length) + ' 条'; } catch (e) {} try { o['页面标题'] = String(document.title || ''); } catch (e) {} try { o['页面地址'] = location.href; } catch (e) {} return JSON.stringify(o, null, 2); };\n"
+
         js += "})();\n"
         return js
     }
