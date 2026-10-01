@@ -192,13 +192,6 @@ struct ContentView: View {
                     Label("User-Agent：\(uaMode.label)（点击切换）", systemImage: "person.crop.circle")
                 }
 
-                Button {
-                    fakeApp.toggle()
-                    reloadKeepingURL()
-                } label: {
-                    Label(fakeApp ? "App 身份：开" : "App 身份：关", systemImage: "app.badge")
-                }
-
                 Divider()
 
                 Button {
