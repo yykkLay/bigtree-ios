@@ -1,0 +1,46 @@
+# XcodeGen 工程描述文件 —— ibutv / BigTree 的 iOS 客户端
+# 特点：纯 App，**不含任何 App 扩展（appex）**，所以手机上的自签工具也能签得动。
+
+name: BigtreeIOS
+
+options:
+  bundleIdPrefix: com.bigtreecompat
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1,2"
+
+targets:
+  BigtreeIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - "Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bigtreecompat.player1
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+
+schemes:
+  BigtreeIOS:
+    build:
+      targets:
+        BigtreeIOS: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
