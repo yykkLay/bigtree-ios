@@ -65,6 +65,7 @@ struct WebView: UIViewRepresentable {
     @Binding var isLoading: Bool
     @Binding var pageTitle: String
 
+    var hideCloseButton: Bool
     var onStream: (String) -> Void
     var onWebView: (WKWebView) -> Void
 
@@ -81,7 +82,8 @@ struct WebView: UIViewRepresentable {
         }
 
         // 注入脚本：补发插件就绪信号 + 捕获视频流地址 + 原生桥存根
-        let script = WKUserScript(source: WebView.injectedJS(fakeApp: fakeApp),
+        let script = WKUserScript(source: WebView.injectedJS(fakeApp: fakeApp,
+                                                            hideCloseButton: hideCloseButton),
                                   injectionTime: .atDocumentStart,
                                   forMainFrameOnly: false)
         config.userContentController.addUserScript(script)
@@ -111,7 +113,7 @@ struct WebView: UIViewRepresentable {
     }
 
     /// 注入到网页的脚本（全部用单行拼接，避免 Swift 多行字符串的缩进规则）
-    static func injectedJS(fakeApp: Bool) -> String {
+    static func injectedJS(fakeApp: Bool, hideCloseButton: Bool) -> String {
         var js = "(function () {\n"
 
         // 1) 让 ibutv 认为 xstree 插件已就绪
@@ -143,6 +145,13 @@ struct WebView: UIViewRepresentable {
         // 4) 可选：伪造 window.Android，让 ibutv 把本 App 当成官方安卓客户端
         if fakeApp {
             js += "try { if (!window.Android) { window.Android = { getVersion: function () { return '1.0.8'; }, wasDebugEnabled: function () { return false; }, saveUrl: function () {}, openAppDownload: function () {}, setFullscreen: function () {} }; } } catch (e) {}\n"
+        }
+
+        // 5) 隐藏网页自带的"退出全屏"按钮（左上角那个 ×），
+        //    改为双击画面退出全屏，避免全屏后没法退出。
+        if hideCloseButton {
+            js += "try { var __st = document.createElement('style'); __st.textContent = '.close-full{display:none !important;}'; (document.head || document.documentElement).appendChild(__st); document.addEventListener('DOMContentLoaded', function () { try { (document.head || document.documentElement).appendChild(__st); } catch (e) {} }); } catch (e) {}\n"
+            js += "try { document.addEventListener('dblclick', function (ev) { try { var b = document.querySelector('.close-full'); if (b && b.offsetParent !== null) { b.click(); } } catch (e2) {} }, true); } catch (e) {}\n"
         }
 
         js += "})();\n"
