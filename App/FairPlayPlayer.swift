@@ -142,7 +142,9 @@ extension FairPlayKeyLoader: AVContentKeySessionDelegate {
                             self.fail(keyRequest, "许可证服务器未返回密钥（CKC 为空）")
                             return
                         }
-                        keyRequest.processContentKeyResponse(AVContentKeyResponse(data: ckc))
+                        keyRequest.processContentKeyResponse(
+                            AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckc)
+                        )
                     }
                 }
             } catch {
