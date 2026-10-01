@@ -36,7 +36,7 @@ enum UAMode: String, CaseIterable, Identifiable {
             //    这里写成当前最新版 1.13，避免弹升级提示。
             // ★ 关键三：保留 xstree 前缀，让它认成"浏览器插件"而不是安卓 App，
             //    否则升级弹窗会出现安卓 APK 下载按钮。
-            return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 xstree/1.13 bigtree/1.13"
+            return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 xstree/1.13.9 bigtree/1.13.9"
         case .desktop:
             // 与 bigtree.apk 中硬编码的 UA 完全一致（不带插件标识）
             return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -163,6 +163,13 @@ struct WebView: UIViewRepresentable {
         // 6) 隐藏网页上所有「安卓 / APK / 下载 App」入口（iOS 上用不到）
         //    包括：升级弹窗里的安卓按钮、data-app-download、以及「BigTree 安卓版」入口
         js += "try { var __hideAndroid = function () { try { var els = document.querySelectorAll('[data-app-download], a[href*=\".apk\"], img[alt*=\"android\" i]'); for (var i = 0; i < els.length; i++) { els[i].style.display = 'none'; } var cands = document.querySelectorAll('a, button, .dropdown-item, .list-group-item'); for (var j = 0; j < cands.length; j++) { var t = (cands[j].textContent || '').trim(); if (t && t.length <= 14 && /(安卓|APK|Android)/i.test(t)) { cands[j].style.display = 'none'; } } } catch (e) {} }; __hideAndroid(); document.addEventListener('DOMContentLoaded', __hideAndroid); setInterval(__hideAndroid, 1500); } catch (e) {}\n"
+
+        // 7) 上报"插件版本"，避免网站弹「APP版本过旧」
+        //    网站 Z() 的读取顺序：
+        //      system.pluginInstalled → <html data-xstree> → window.__XSTREE_VERSION__
+        //    第 1 项需要插件与服务器通信（我没有），后两项可以直接注入。
+        js += "try { window.__XSTREE_VERSION__ = '1.13.9'; } catch (e) {}\n"
+        js += "try { var __sv = function () { try { document.documentElement.setAttribute('data-xstree', '1.13.9'); } catch (e) {} }; __sv(); document.addEventListener('DOMContentLoaded', __sv); setInterval(__sv, 1000); } catch (e) {}\n"
 
         js += "})();\n"
         return js
